@@ -29,7 +29,7 @@ void generateMandelbrot(std::vector<unsigned char>& image) {
     //#pragma omp parallel for schedule(static)
     //#pragma omp parallel for schedule(guided, 50)
 
-    
+
     #pragma omp parallel for schedule(dynamic, 50) //Mejor opcion
     for (int y = 0; y < HEIGHT; ++y) {
         for (int x = 0; x < WIDTH; ++x) {
@@ -99,5 +99,50 @@ int main() {
     savePGM("mandelbrot_8k_filtered.pgm", image_filtered);
 
     std::cout << "Proceso completado exitosamente.\n";
+
+    // ---------------------------------------------------------
+    // TAREA C: Histograma de Colores (Sincronización)
+    // ---------------------------------------------------------
+    std::cout << "\nTarea C: Calculando Histograma de colores...\n";
+    int TOTAL_PIXELS = WIDTH * HEIGHT;
+    
+    // Método 1: Exclusión Mutua (Atomic) - Susceptible a False Sharing
+    std::vector<int> histogram_atomic(256, 0);
+    auto start_h1 = omp_get_wtime();
+    
+    #pragma omp parallel for
+    for (int i = 0; i < TOTAL_PIXELS; ++i) {
+        int color = image_filtered[i];
+        #pragma omp atomic
+        histogram_atomic[color]++;
+    }
+    auto end_h1 = omp_get_wtime();
+    std::cout << " - Metodo Atomic (con False Sharing): " << (end_h1 - start_h1) << " segundos\n";
+
+    // Método 2: Variables Estrictamente Locales (Sin False Sharing)
+    std::vector<int> histogram_local(256, 0);
+    auto start_h2 = omp_get_wtime();
+    
+    #pragma omp parallel
+    {
+        // Arreglo local para cada hilo
+        int local_hist[256] = {0};
+        
+        #pragma omp for
+        for (int i = 0; i < TOTAL_PIXELS; ++i) {
+            local_hist[image_filtered[i]]++;
+        }
+        
+        // Sincronización final usando critical para sumar al global
+        #pragma omp critical
+        {
+            for (int i = 0; i < 256; ++i) {
+                histogram_local[i] += local_hist[i];
+            }
+        }
+    }
+    auto end_h2 = omp_get_wtime();
+    std::cout << " - Metodo Variables Locales (Optimizado): " << (end_h2 - start_h2) << " segundos\n";
+    
     return 0;
 }
