@@ -55,11 +55,14 @@ void generateMandelbrot(std::vector<unsigned char>& image) {
 void applyConvolution(const std::vector<unsigned char>& input, std::vector<unsigned char>& output) {
     int offset = KERNEL_SIZE / 2;
 
-    // Directiva OpenMP para paralelizar la Tarea B
+    // Directiva OpenMP para paralelizar el bucle exterior (hilos)
     #pragma omp parallel for
     for (int y = offset; y < HEIGHT - offset; ++y) {
         for (int x = offset; x < WIDTH - offset; ++x) {
             float sum = 0.0f;
+
+            // Estructura SPMD: Forzar vectorización en bucles internos
+            #pragma omp simd collapse(2) reduction(+:sum)
             for (int ky = -offset; ky <= offset; ++ky) {
                 for (int kx = -offset; kx <= offset; ++kx) {
                     int pixel_val = input[(y + ky) * WIDTH + (x + kx)];
@@ -143,6 +146,6 @@ int main() {
     }
     auto end_h2 = omp_get_wtime();
     std::cout << " - Metodo Variables Locales (Optimizado): " << (end_h2 - start_h2) << " segundos\n";
-    
+
     return 0;
 }
