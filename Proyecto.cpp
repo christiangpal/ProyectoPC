@@ -25,7 +25,12 @@ void generateMandelbrot(std::vector<unsigned char>& image) {
     const float y_max = 1.0f;
 
     // Directiva OpenMP para paralelizar la Tarea A
-    #pragma omp parallel for
+    //Resultado de los 3 experimentos: schedule(static, 50) = 1.916s, schedule(dynamic, 50) = 1.21s, schedule(guided, 50) = 1.348s
+    //#pragma omp parallel for schedule(static)
+    //#pragma omp parallel for schedule(guided, 50)
+
+    
+    #pragma omp parallel for schedule(dynamic, 50) //Mejor opcion
     for (int y = 0; y < HEIGHT; ++y) {
         for (int x = 0; x < WIDTH; ++x) {
             float cx = x_min + (x / (float)WIDTH) * (x_max - x_min);
